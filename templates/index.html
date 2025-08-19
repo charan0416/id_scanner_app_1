@@ -1,0 +1,276 @@
+<!-- templates/index.html -->
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Upload Document for OCR</h1>
+
+    <!-- Option 1: Single File Upload -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Option 1: Upload a Single PDF or Image</h3>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('upload_from_form') }}" method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="single_file" class="form-label">Select PDF or Image File</label>
+                    <input class="form-control" type="file" id="single_file" name="single_file" accept=".pdf,.png,.jpg,.jpeg">
+                </div>
+                <button type="submit" class="btn btn-primary">Upload and Process</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Option 2: Two-Sided Image Upload -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Option 2: Upload Two Images (e.g., ID Card Front and Back)</h3>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('upload_from_form') }}" method="post" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label for="side1_file" class="form-label">Side 1 Image</label>
+                    <input class="form-control" type="file" id="side1_file" name="side1_file" accept=".png,.jpg,.jpeg" required>
+                </div>
+                <div class="mb-3">
+                    <label for="side2_file" class="form-label">Side 2 Image</label>
+                    <input class="form-control" type="file" id="side2_file" name="side2_file" accept=".png,.jpg,.jpeg" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Combine, Upload, and Process</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Option 3: Camera Capture Section -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h3>Option 3: Capture Image from Camera</h3>
+        </div>
+        <div class="card-body">
+            <div id="camera-container" class="text-center">
+                <button id="start-camera" class="btn btn-secondary mb-3">Start Camera</button>
+                <div id="video-container" style="display:none;">
+                    <video id="video" width="640" height="480" autoplay class="border rounded"></video>
+                    <br>
+                    <button id="click-photo" class="btn btn-primary mt-3">Snap Photo</button>
+                </div>
+                <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Option 4: Base64 Upload Section -->
+    <div class="card">
+        <div class="card-header">
+            <h3>Option 4: Upload as Base64 </h3>
+        </div>
+        <div class="card-body">
+            <!-- Sub-Option A: Single Base64 Image -->
+            <h5 class="mt-2">Single Image</h5>
+            <div class="mb-3">
+                <label for="base64_single_file" class="form-label">Select Image File</label>
+                <input class="form-control" type="file" id="base64_single_file" accept=".png,.jpg,.jpeg">
+            </div>
+            <button id="process-base64-single" class="btn btn-info">Upload Single Image (Base64)</button>
+            <hr>
+            <!-- Sub-Option B: Two Base64 Images -->
+            <h5 class="mt-4">Two Images (e.g., ID Card Front and Back)</h5>
+            <div class="mb-3">
+                <label for="base64_side1_file" class="form-label">Side 1 Image</label>
+                <input class="form-control" type="file" id="base64_side1_file" accept=".png,.jpg,.jpeg">
+            </div>
+            <div class="mb-3">
+                <label for="base64_side2_file" class="form-label">Side 2 Image</label>
+                <input class="form-control" type="file" id="base64_side2_file" accept=".png,.jpg,.jpeg">
+            </div>
+            <button id="process-base64-dual" class="btn btn-info">Upload Two Images (Base64)</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- Common Loading Spinner (Used by Camera and Base64 uploads) -->
+<div id="loading-spinner" style="display:none;" class="text-center mt-3">
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p>Processing image, please wait...</p>
+</div>
+
+
+<!-- JavaScript for All Features -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Common Elements ---
+    const loadingSpinner = document.getElementById('loading-spinner');
+
+    // --- Camera Feature (Option 3) ---
+    const startCameraButton = document.getElementById('start-camera');
+    const videoContainer = document.getElementById('video-container');
+    const clickPhotoButton = document.getElementById('click-photo');
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    let stream;
+
+    if (startCameraButton) {
+        startCameraButton.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = stream;
+                videoContainer.style.display = 'block';
+                startCameraButton.style.display = 'none';
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                alert("Could not access the camera. Please ensure you have given permission.");
+            }
+        });
+    }
+
+    if (clickPhotoButton) {
+        clickPhotoButton.addEventListener('click', () => {
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            videoContainer.style.display = 'none';
+            loadingSpinner.style.display = 'block';
+
+            canvas.toBlob((blob) => {
+                const formData = new FormData();
+                formData.append('single_file', blob, 'capture.jpg');
+
+                fetch("{{ url_for('upload_from_form') }}", {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => {
+                    if (response.ok && response.redirected) {
+                        window.location.href = response.url;
+                    } else {
+                        response.text().then(text => {
+                            console.error('Upload failed:', text);
+                            alert('Image upload failed. Please check the console for details.');
+                            loadingSpinner.style.display = 'none';
+                            startCameraButton.style.display = 'block';
+                        });
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('An error occurred during upload. Please check the console.');
+                    loadingSpinner.style.display = 'none';
+                    startCameraButton.style.display = 'block';
+                });
+            }, 'image/jpeg');
+        });
+    }
+
+    // --- Base64 Upload Feature (Option 4) ---
+    const processSingleBtn = document.getElementById('process-base64-single');
+    const processDualBtn = document.getElementById('process-base64-dual');
+
+    /**
+     * Converts a file from a file input into a Base64 string.
+     * @param {File} file The file to convert.
+     * @returns {Promise<string>} A promise that resolves with the Base64 string.
+     */
+    const fileToBase64 = (file) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => {
+            // The result includes a prefix like "data:image/jpeg;base64,"
+            // We need to remove it to get the pure Base64 string.
+            const base64String = reader.result.split(',')[1];
+            resolve(base64String);
+        };
+        reader.onerror = (error) => reject(error);
+    });
+
+    // Handler for single Base64 upload
+    if (processSingleBtn) {
+        processSingleBtn.addEventListener('click', async () => {
+            const fileInput = document.getElementById('base64_single_file');
+            if (fileInput.files.length === 0) {
+                alert('Please select a file first.');
+                return;
+            }
+
+            loadingSpinner.style.display = 'block';
+            processSingleBtn.disabled = true;
+
+            try {
+                const base64String = await fileToBase64(fileInput.files[0]);
+                const payload = { image_base64: base64String };
+
+                const response = await fetch("{{ url_for('upload_from_base64') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    // On success, the API returns JSON. We can redirect to history.
+                    window.location.href = "{{ url_for('history') }}";
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Unknown error occurred.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred: ' + error.message);
+                loadingSpinner.style.display = 'none';
+                processSingleBtn.disabled = false;
+            }
+        });
+    }
+
+    // Handler for dual Base64 upload
+    if (processDualBtn) {
+        processDualBtn.addEventListener('click', async () => {
+            const side1Input = document.getElementById('base64_side1_file');
+            const side2Input = document.getElementById('base64_side2_file');
+
+            if (side1Input.files.length === 0 || side2Input.files.length === 0) {
+                alert('Please select both side 1 and side 2 images.');
+                return;
+            }
+
+            loadingSpinner.style.display = 'block';
+            processDualBtn.disabled = true;
+
+            try {
+                // Use Promise.all to convert both files concurrently
+                const [base64Side1, base64Side2] = await Promise.all([
+                    fileToBase64(side1Input.files[0]),
+                    fileToBase64(side2Input.files[0])
+                ]);
+
+                const payload = {
+                    side1_base64: base64Side1,
+                    side2_base64: base64Side2
+                };
+
+                const response = await fetch("{{ url_for('upload_from_base64') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    window.location.href = "{{ url_for('history') }}";
+                } else {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Unknown error occurred.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred: ' + error.message);
+                loadingSpinner.style.display = 'none';
+                processDualBtn.disabled = false;
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

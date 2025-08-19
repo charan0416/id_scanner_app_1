@@ -1,0 +1,7 @@
+/* static/css/style.css */
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-height: 400px;
+    overflow-y: auto;
+}

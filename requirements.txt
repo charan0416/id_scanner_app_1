@@ -1,0 +1,17 @@
+# requirements.txt (Pinned and Corrected)
+
+# Web Framework and Database (Pinned for compatibility)
+Flask
+Flask-SQLAlchemy==3.0.3
+SQLAlchemy==1.4.46
+
+# Utilities
+psycopg2-binary
+python-dotenv
+google-generativeai
+Pillow
+
+# Computer Vision and PDF Processing
+opencv-python
+PyMuPDF
+numpy

@@ -1,0 +1,37 @@
+<!-- templates/history.html -->
+{% extends "layout.html" %}
+{% block content %}
+<div class="container">
+    <h1 class="my-4">Processing History</h1>
+    {% if results %}
+        {% for result in results %}
+        <div class="card mb-4 shadow-sm">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    Record #{{ result.id }} - Processed on: {{ result.processed_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>Extracted Data (JSON)</h6>
+                        <pre class="bg-light p-3 rounded"><code>{{ result.extracted_data | tojson(indent=4) }}</code></pre>
+                        <p><strong>Original File:</strong> <a href="{{ url_for('serve_upload', filename=result.original_filename) }}" target="_blank">{{ result.original_filename }}</a></p>
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Extracted Face</h6>
+                        {% if result.face_image_path %}
+                            <img src="{{ url_for('serve_face', filename=result.face_image_path.split('/')[-1]) }}" class="img-fluid rounded" alt="Extracted Face">
+                        {% else %}
+                            <p class="text-muted">No face was detected or extracted.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="text-center">No records found. Upload a document to get started.</p>
+    {% endif %}
+</div>
+{% endblock %}
