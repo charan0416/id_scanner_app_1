@@ -4,7 +4,7 @@ The application provides a user-friendly web interface for uploads, a camera cap
 Features
 Multiple Upload Methods:
 Web Form: Upload single or two-sided images (JPG, PNG) and PDFs directly.
-Live Camera: Capture an image using your device's camera for instant processing.
+Live Camera: Capture an image using your device's camera for instant processing
 REST API: Programmatically submit files via multipart/form-data or Base64-encoded JSON payloads.
 Advanced Image Pre-processing:
 Perspective Correction: Automatically detects the corners of an ID card in a photo taken at an angle and warps it into a flat, rectangular image.
